@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Template • TodoMVC</title>
+		<link rel="stylesheet" href="node_modules/todomvc-common/base.css">
+		<link rel="stylesheet" href="node_modules/todomvc-app-css/index.css">
+		<!-- CSS overrides - remove if you don't need it -->
+		<link rel="stylesheet" href="css/app.css">
+	</head>
+	<body>
+		<section class="todoapp">
+			<header class="header">
+				<h1>备忘录</h1>
+				<input class="new-todo" placeholder="What needs to be done?"   @keyup.enter="handleNewTodo" v-focus >
+			</header>
+			<!-- This section should be hidden by default and shown when there are todos -->
+			<template v-if="todos.length">
+			<section class="main">
+				<input id="toggle-all" class="toggle-all" type="checkbox" v-model="toggleAllStatus">
+				<label for="toggle-all">Mark all as complete</label>
+				<ul class="todo-list">
+					<!-- These are here just to show the structure of the list items -->
+					<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
+					<li :class="{completed:item.completed,editing:currentEditing===item}" 
+					v-for="item in filteredTodos">
+						<div class="view">
+							<input class="toggle" type="checkbox" v-model="item.completed">
+							<label @dblclick="handleEditingClick(item)">{{item.information}}</label>
+							<button class="destroy" @click="handleRemoveTodeClick(item.id)"></button>
+						</div>
+						<input class="edit" :value="item.information" 
+						@keyup.enter="handleSaveEditingContent(item,index,$event)"
+						@blur="handleSaveEditingContent(item,index,$event)">
+					</li>
+				</ul>
+			</section>
+			<!-- This footer should be hidden by default and shown when there are todos -->
+			<footer class="footer">
+				<!-- This should be `0 items left` by default -->
+				<span class="todo-count"><strong>{{handleItemLeft()}}</strong> item left</span>
+				<!-- Remove this if you don't implement routing -->
+				<ul class="filters">
+					<li>
+						<a :class="{selected: filterText===''}" href="#/">All</a>
+					</li>
+					<li>
+						<a :class="{selected: filterText==='active'}" href="#/active">Active</a>
+					</li>
+					<li>
+						<a :class="{selected: filterText==='completed'}" href="#/completed">Completed</a>
+					</li>
+				</ul>
+				<!-- Hidden if no completed items are left ↓ -->
+				<button v-if="todos.some(item => item.completed)" class="clear-completed" @click="handleClearAllDoneTodos">Clear completed</button>
+			</footer>
+			</template>
+		</section>
+		<footer class="info">
+			<p>Double-click to edit a todo</p>
+			<!-- Remove the below line ↓ -->
+			<p>Template by <a href="http://sindresorhus.com">Sindre Sorhus</a></p>
+			<!-- Change this out with your name and url ↓ -->
+			<p>Created by <a href="http://todomvc.com">you</a></p>
+			<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
+		</footer>
+		<!-- Scripts here. Don't remove ↓ -->
+		<script src="./node_modules/vue/dist/vue.global.js"></script>
+		<!-- <script src="node_modules/todomvc-common/base.js"></script> -->
+		<!-- <script src="js/app.js"></script> -->
+		<script>
+         const todoapp = Vue.createApp({
+				data(){
+					return{
+						message:'',
+						todos:JSON.parse(window.localStorage.getItem('todos')||'[]'),
+					    currentEditing:null,
+						filterText:'node'
+					}
+					},
+				computed:{
+                         filteredTodos(){
+							 switch (this.filterText) {
+								case 'active':
+								  return this.todos.filter(t=>!t.completed)
+									 break;
+								case 'completed':
+								  return this.todos.filter(t=>t.completed)
+									 break;
+								 default:
+								  return this.todos
+									 break;
+							 }
+						 },
+						 toggleAllStatus:{
+							 get(){
+                                return this.todos.every(t=>t.completed)
+							 },
+							 set(){
+								const checked = !this.toggleAllStatus
+                                this.todos.forEach(item=>{
+					            item.completed=checked
+				                })
+							 }
+
+						 }
+						 
+					},
+					watch:{
+                        todos:{
+							handler() {
+								window.localStorage.setItem('todos',JSON.stringify(this.todos))
+							},
+							deep:true
+						}
+					},
+				methods:{
+				handleNewTodo(e){
+						const target=e.target
+						const value = target.value.trim()
+						if(!value.length){
+							return
+						}
+						const todos=this.todos
+						todos.push({
+							id:todos.length?todos[todos.length-1].id+1:1,
+							information:e.target.value,
+							completed:false
+						})
+						target.value=''
+					},
+				handleToggleAllChange(e){
+					const checked=e.target.checked
+                this.todos.forEach(item=>{
+					item.completed=checked
+				})
+				},
+				handleRemoveTodeClick(number){
+                    this.todos.forEach((item,index)=>{
+						if(item.id===number){
+							this.todos.splice(index,1)
+						} return
+					})
+				},
+				handleEditingClick(todo){
+                  this.currentEditing = todo
+				},
+				handleSaveEditingContent(todo,index,e){
+					e.target.focus()
+					const content=e.target.value
+					if(!content){
+					  return this.todos.splice(index,1)
+					}
+					todo.information=content
+					this.currentEditing=null
+				},
+				handleClearAllDoneTodos(){
+					for(let i=0;i<this.todos.length;i++){
+                       if(this.todos[i].completed){
+						   this.todos.splice(i,1)
+						i--
+					   }
+					}
+				},
+				handleItemLeft(){
+                   return this.todos.filter(item=>!item.completed).length
+				}
+			}
+		})
+		todoapp.directive('focus', {
+  // 当被绑定的元素挂载到 DOM 中时……
+  mounted(el) {
+    // 聚焦元素
+    el.focus()
+  }
+})	
+
+		window.app=todoapp.mount('.todoapp')
+
+		window.onhashchange = function(){
+			app.filterText = window.location.hash.substr(2)
+			// console.log(app.filterText)
+		}
+		window.onhashchange()
+		</script>
+	</body>
+</html>
